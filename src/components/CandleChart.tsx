@@ -1,9 +1,10 @@
-import { useMemo } from "react";
-import Plot from "react-plotly.js";
+import { lazy, Suspense, useMemo } from "react";
 import type { Candle } from "@/lib/binance";
 import type { DetectedPattern } from "@/lib/patterns";
 import { PATTERN_LABEL, BULLISH } from "@/lib/patterns";
 import type { Signal } from "@/lib/signals";
+
+const Plot = lazy(() => import("react-plotly.js"));
 
 interface Props {
   candles: Candle[];
@@ -151,41 +152,49 @@ export function CandleChart({ candles, patterns, signal }: Props) {
   }, [candles, patterns, signal]);
 
   return (
-    <Plot
-      data={data as unknown as Plotly.Data[]}
-      layout={{
-        autosize: true,
-        height: 560,
-        margin: { l: 50, r: 60, t: 10, b: 30 },
-        paper_bgcolor: "rgba(0,0,0,0)",
-        plot_bgcolor: "rgba(0,0,0,0)",
-        font: { color: "#cbd5e1", family: "ui-sans-serif, system-ui" },
-        dragmode: "pan",
-        xaxis: {
-          rangeslider: { visible: false },
-          gridcolor: "rgba(148,163,184,0.12)",
-          zeroline: false,
-          domain: [0, 1],
-        },
-        yaxis: {
-          gridcolor: "rgba(148,163,184,0.12)",
-          zeroline: false,
-          domain: [0.28, 1],
-          side: "right",
-        },
-        yaxis2: {
-          gridcolor: "rgba(148,163,184,0.05)",
-          zeroline: false,
-          domain: [0, 0.22],
-          side: "right",
-        },
-        shapes: shapes.shapes,
-        annotations: shapes.annotations,
-        showlegend: false,
-      }}
-      config={{ displayModeBar: false, responsive: true }}
-      style={{ width: "100%", height: "560px" }}
-      useResizeHandler
-    />
+    <Suspense
+      fallback={
+        <div className="h-[560px] flex items-center justify-center text-muted-foreground text-sm">
+          Loading chart...
+        </div>
+      }
+    >
+      <Plot
+        data={data as unknown as Plotly.Data[]}
+        layout={{
+          autosize: true,
+          height: 560,
+          margin: { l: 50, r: 60, t: 10, b: 30 },
+          paper_bgcolor: "rgba(0,0,0,0)",
+          plot_bgcolor: "rgba(0,0,0,0)",
+          font: { color: "#cbd5e1", family: "ui-sans-serif, system-ui" },
+          dragmode: "pan",
+          xaxis: {
+            rangeslider: { visible: false },
+            gridcolor: "rgba(148,163,184,0.12)",
+            zeroline: false,
+            domain: [0, 1],
+          },
+          yaxis: {
+            gridcolor: "rgba(148,163,184,0.12)",
+            zeroline: false,
+            domain: [0.28, 1],
+            side: "right",
+          },
+          yaxis2: {
+            gridcolor: "rgba(148,163,184,0.05)",
+            zeroline: false,
+            domain: [0, 0.22],
+            side: "right",
+          },
+          shapes: shapes.shapes,
+          annotations: shapes.annotations,
+          showlegend: false,
+        }}
+        config={{ displayModeBar: false, responsive: true }}
+        style={{ width: "100%", height: "560px" }}
+        useResizeHandler
+      />
+    </Suspense>
   );
 }
