@@ -1,3 +1,4 @@
+import type { MarketDataProvider } from "./marketData";
 // Binance public market data engine.
 // - REST fallback to load historical candles
 // - WebSocket kline stream for live candles + reconnection w/ exponential backoff
@@ -166,3 +167,14 @@ export const SUPPORTED_SYMBOLS = [
 ] as const;
 
 export const SUPPORTED_TIMEFRAMES: Timeframe[] = ["1m", "5m", "15m", "1h"];
+
+export const binanceMarketDataProvider: MarketDataProvider = {
+  name: "binance",
+  normalizeSymbol: (symbol) => symbol.trim().toUpperCase(),
+  fetchHistoricalCandles: (symbol, timeframe, limit = 500) =>
+    fetchHistoricalCandles(symbol.trim().toUpperCase(), timeframe, limit),
+  subscribeCandles: (symbol, timeframe, onCandle, onStatus) =>
+    subscribeKlines(symbol.trim().toUpperCase(), timeframe, onCandle, onStatus),
+  supportedSymbols: SUPPORTED_SYMBOLS,
+  supportedTimeframes: SUPPORTED_TIMEFRAMES,
+};

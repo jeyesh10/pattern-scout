@@ -18,12 +18,15 @@ export interface Signal {
   patternStartTs: number;
   patternEndTs: number;
   detectedAt: number;
+  momentumPct: number;
+  volatilityPct: number;
 }
 
 const VOL_LOOKBACK = 20;
 const VOL_BREAKOUT_MULT = 1.5;
 
 function avg(arr: number[]) {
+  if (arr.length === 0) return 0;
   return arr.reduce((s, n) => s + n, 0) / arr.length;
 }
 
@@ -66,7 +69,11 @@ export function confirmPattern(
   const recent = candles.slice(pattern.startIdx, n);
   const swingLow = Math.min(...recent.map((c) => c.low));
   const swingHigh = Math.max(...recent.map((c) => c.high));
-  const stopLoss = isBull ? swingLow : swingHigh;
+  let stopLoss = isBull ? swingLow : swingHigh;
+  // Hard safety guard for malformed geometry:
+  // stop must stay on the opposite side of entry.
+  if (isBull && stopLoss >= entry) stopLoss = entry * 0.995;
+  if (!isBull && stopLoss <= entry) stopLoss = entry * 1.005;
 
   const height = pattern.patternHeight || Math.abs(entry - stopLoss);
   const tp1 = isBull ? entry + height : entry - height;
@@ -75,6 +82,12 @@ export function confirmPattern(
   const risk = Math.abs(entry - stopLoss);
   const reward = Math.abs(tp1 - entry);
   const rr = risk === 0 ? 0 : reward / risk;
+  const lookback = candles.slice(Math.max(0, n - 20), n);
+  const highs = lookback.map((c) => c.high);
+  const lows = lookback.map((c) => c.low);
+  const volatilityPct = entry === 0 ? 0 : ((Math.max(...highs) - Math.min(...lows)) / entry) * 100;
+  const baseline = candles[Math.max(0, n - 11)]?.close ?? entry;
+  const momentumPct = baseline === 0 ? 0 : ((entry - baseline) / baseline) * 100;
 
   return {
     pattern,
@@ -91,6 +104,8 @@ export function confirmPattern(
     patternStartTs: candles[pattern.startIdx].time,
     patternEndTs: candles[Math.min(pattern.endIdx, n - 1)].time,
     detectedAt: Date.now(),
+    momentumPct,
+    volatilityPct,
   };
 }
 

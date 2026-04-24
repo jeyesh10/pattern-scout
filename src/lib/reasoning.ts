@@ -8,9 +8,14 @@ export function buildReasoningTrace(s: Signal): string {
   const dir = isBull ? "BULLISH" : "BEARISH";
   const arrow = isBull ? "📈" : "📉";
   const sl = s.stopLoss;
-  const slPct = ((s.stopLoss - s.entry) / s.entry) * 100;
-  const tp1Pct = ((s.tp1 - s.entry) / s.entry) * 100;
-  const tp2Pct = ((s.tp2 - s.entry) / s.entry) * 100;
+  const signedMovePct = (target: number) => {
+    if (s.entry === 0) return 0;
+    const raw = ((target - s.entry) / s.entry) * 100;
+    return isBull ? raw : -raw;
+  };
+  const slPct = signedMovePct(s.stopLoss);
+  const tp1Pct = signedMovePct(s.tp1);
+  const tp2Pct = signedMovePct(s.tp2);
 
   const observations = s.pattern.details.map((d) => `   - ${d}`).join("\n");
 
@@ -29,6 +34,12 @@ WHAT I SEE:
 ${observations}
    - Breakout candle close ${isBull ? "above" : "below"} neckline at ${(s.pattern.neckline ?? 0).toFixed(2)} ✅
    - Breakout volume ${s.breakoutVolumeMultiple.toFixed(2)}× the 20-candle average ✅
+   - 10-candle momentum ${s.momentumPct >= 0 ? "+" : ""}${s.momentumPct.toFixed(2)}%, recent volatility ${s.volatilityPct.toFixed(2)}%
+
+AI ANALYST VERDICT:
+   - Primary action: ${isBull ? "BUY breakout strength" : "SELL breakdown weakness"}
+   - Trigger quality: ${s.breakoutVolumeMultiple >= 2 ? "very strong" : s.breakoutVolumeMultiple >= 1.5 ? "acceptable" : "weak"}
+   - Invalidation: immediate close ${isBull ? "below" : "above"} ${sl.toFixed(2)}
 
 ENTRY:        ${s.entry.toFixed(2)}
 STOP LOSS:    ${sl.toFixed(2)}   (${slPct >= 0 ? "+" : ""}${slPct.toFixed(2)}%)

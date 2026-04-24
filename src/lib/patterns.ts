@@ -108,11 +108,15 @@ function pct(a: number, b: number) {
 }
 
 function avg(arr: number[]) {
+  if (arr.length === 0) return 0;
   return arr.reduce((s, n) => s + n, 0) / arr.length;
 }
 
 function vol(candles: Candle[], from: number, to: number) {
-  const slice = candles.slice(from, to + 1);
+  if (candles.length === 0) return 0;
+  const start = Math.max(0, Math.min(from, candles.length - 1));
+  const end = Math.max(start, Math.min(to, candles.length - 1));
+  const slice = candles.slice(start, end + 1);
   return avg(slice.map((c) => c.volume));
 }
 
