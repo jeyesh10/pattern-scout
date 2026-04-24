@@ -14,14 +14,12 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import {
-  fetchHistoricalCandles,
   mergeCandle,
-  subscribeKlines,
-  SUPPORTED_SYMBOLS,
-  SUPPORTED_TIMEFRAMES,
   type Candle,
   type Timeframe,
 } from "@/lib/binance";
+import { indiaMarketDataProvider } from "@/lib/indiaMarketData";
+import { resolveProviderForSymbol } from "@/lib/providerRegistry";
 import { detectAllPatterns, type DetectedPattern } from "@/lib/patterns";
 import { confirmPattern, type Signal } from "@/lib/signals";
 import { buildReasoningTrace } from "@/lib/reasoning";
@@ -31,11 +29,11 @@ import { openPaperTradeFromSignal, resolveOpenTrades } from "@/lib/paperTrader";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "PatternScope — Live Crypto Chart Pattern Recognition" },
+      { title: "PatternScope — Live Indian Stock Pattern Recognition" },
       {
         name: "description",
         content:
-          "Educational dashboard streaming Binance market data and detecting 11 classic chart patterns in real time.",
+          "Educational dashboard streaming Indian market data and detecting 11 classic chart patterns in real time.",
       },
     ],
   }),
@@ -43,7 +41,7 @@ export const Route = createFileRoute("/")({
 });
 
 function DashboardPage() {
-  const [symbol, setSymbol] = useState<string>("BTCUSDT");
+  const [symbol, setSymbol] = useState<string>(indiaMarketDataProvider.supportedSymbols[0] ?? "RELIANCE:NSE");
   const [timeframe, setTimeframe] = useState<Timeframe>("15m");
   const [candles, setCandles] = useState<Candle[]>([]);
   const [status, setStatus] = useState<"connecting" | "open" | "closed" | "error">("connecting");
@@ -57,6 +55,7 @@ function DashboardPage() {
   const lastSignalKey = useRef<string | null>(null);
   // Track last closed candle time we processed (so detection only runs on new closes)
   const lastClosedTime = useRef<number>(0);
+  const selectedProvider = useMemo(() => resolveProviderForSymbol(symbol), [symbol]);
 
   // Reset + load history whenever symbol/timeframe changes
   useEffect(() => {
@@ -67,7 +66,8 @@ function DashboardPage() {
     lastSignalKey.current = null;
     lastClosedTime.current = 0;
 
-    fetchHistoricalCandles(symbol, timeframe, 500)
+    selectedProvider
+      .fetchHistoricalCandles(symbol, timeframe, 500)
       .then((hist) => {
         if (cancelled) return;
         setCandles(hist);
@@ -78,18 +78,18 @@ function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [symbol, timeframe]);
+  }, [selectedProvider, symbol, timeframe]);
 
-  // Live websocket
+  // Live stream (websocket for Binance / polling for India provider)
   useEffect(() => {
-    const stream = subscribeKlines(
+    const stream = selectedProvider.subscribeCandles(
       symbol,
       timeframe,
       (c) => setCandles((prev) => mergeCandle(prev, c)),
       setStatus,
     );
     return () => stream.close();
-  }, [symbol, timeframe]);
+  }, [selectedProvider, symbol, timeframe]);
 
   // Run detection whenever a NEW candle closes
   useEffect(() => {
@@ -225,7 +225,7 @@ function DashboardPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {SUPPORTED_SYMBOLS.map((s) => (
+                {indiaMarketDataProvider.supportedSymbols.map((s) => (
                   <SelectItem key={s} value={s}>
                     {s}
                   </SelectItem>
@@ -240,7 +240,7 @@ function DashboardPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {SUPPORTED_TIMEFRAMES.map((t) => (
+                {indiaMarketDataProvider.supportedTimeframes.map((t) => (
                   <SelectItem key={t} value={t}>
                     {t}
                   </SelectItem>
