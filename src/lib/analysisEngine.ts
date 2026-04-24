@@ -5,6 +5,7 @@ import type { Candle, Timeframe } from "./binance";
 import type { MarketDataProvider } from "./marketData";
 import { openPaperTradeFromSignal, resolveOpenTrades } from "./paperTrader";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveStrategyConfig } from "./strategyConfig";
 
 export interface AnalysisDecision {
   symbol: string;
@@ -30,7 +31,8 @@ export async function runAnalysisOnce(
   const candles = await provider.fetchHistoricalCandles(normalizedSymbol, timeframe, limit);
   const patterns = detectAllPatterns(candles);
   const top = patterns[0];
-  const signal = top ? confirmPattern(top, candles, normalizedSymbol, timeframe) : null;
+  const config = resolveStrategyConfig(normalizedSymbol, timeframe);
+  const signal = top ? confirmPattern(top, candles, normalizedSymbol, timeframe, config) : null;
   const reasoning = signal ? buildReasoningTrace(signal) : null;
 
   return {

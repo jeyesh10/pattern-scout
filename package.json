@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "scan:scheduler": "npx tsx scripts/scan-scheduler.ts"
+    "scan:scheduler": "npx tsx scripts/scan-scheduler.ts",
+    "backtest:accuracy": "npx tsx scripts/backtest-accuracy.ts",
+    "optimize:accuracy": "npx tsx scripts/optimize-strategy.ts"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",

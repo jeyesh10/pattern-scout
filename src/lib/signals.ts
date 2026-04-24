@@ -2,6 +2,7 @@
 
 import type { Candle } from "./binance";
 import { BULLISH, type DetectedPattern, PATTERN_LABEL } from "./patterns";
+import type { SignalFilterConfig } from "./strategyConfig";
 
 export interface Signal {
   pattern: DetectedPattern;
@@ -39,6 +40,7 @@ export function confirmPattern(
   candles: Candle[],
   symbol: string,
   timeframe: string,
+  config?: SignalFilterConfig,
 ): Signal | null {
   const n = candles.length;
   if (n < VOL_LOOKBACK + 2) return null;
@@ -59,7 +61,8 @@ export function confirmPattern(
   const avgVol = avg(volWindow.map((c) => c.volume));
   if (avgVol === 0) return null;
   const volMult = last.volume / avgVol;
-  if (volMult < VOL_BREAKOUT_MULT) return null;
+  const minVolMult = config?.minBreakoutVolumeMultiple ?? VOL_BREAKOUT_MULT;
+  if (volMult < minVolMult) return null;
 
   // Entry just beyond breakout
   const slip = isBull ? 1.0005 : 0.9995;
@@ -88,6 +91,22 @@ export function confirmPattern(
   const volatilityPct = entry === 0 ? 0 : ((Math.max(...highs) - Math.min(...lows)) / entry) * 100;
   const baseline = candles[Math.max(0, n - 11)]?.close ?? entry;
   const momentumPct = baseline === 0 ? 0 : ((entry - baseline) / baseline) * 100;
+
+  if (pattern.confidence < (config?.minConfidence ?? 50)) return null;
+  if (rr < (config?.minRiskReward ?? 0)) return null;
+  if (volatilityPct > (config?.maxVolatilityPct ?? Number.POSITIVE_INFINITY)) return null;
+
+  if (config?.requireTrendAlignment) {
+    const closes = candles.slice(Math.max(0, n - 60), n).map((c) => c.close);
+    const sma = (len: number) => {
+      const w = closes.slice(Math.max(0, closes.length - len));
+      return w.length === 0 ? 0 : w.reduce((s, x) => s + x, 0) / w.length;
+    };
+    const sma20 = sma(20);
+    const sma50 = sma(50);
+    if (isBull && sma20 < sma50) return null;
+    if (!isBull && sma20 > sma50) return null;
+  }
 
   return {
     pattern,
